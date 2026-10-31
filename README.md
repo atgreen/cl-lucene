@@ -3,10 +3,10 @@
 A native Common Lisp API for [Apache Lucene](https://lucene.apache.org/),
 running on [OpenLDK](https://github.com/atgreen/openldk).
 
-Lucene is a Java library, but with OpenLDK it runs inside SBCL in the same
-process and heap as your Lisp code — no JVM subprocess, no sockets, no
-serialization. `cl-lucene` wraps it in an idiomatic Lisp API: you build an
-index and search it with Lisp data, and never see a Java method descriptor.
+Lucene is a Java library. OpenLDK runs it inside SBCL, so Lisp and Lucene share
+a single process and heap. cl-lucene wraps the Lucene classes in Lisp functions
+that take and return ordinary Lisp data, so callers do not write Java method
+descriptors.
 
 ```lisp
 (asdf:load-system "cl-lucene")
@@ -128,7 +128,8 @@ the first time the runtime starts. The version is `lucene:*lucene-version*`
 
 ### Query parsers
 
-Richer than the default classic parse `make-searcher` does for a string:
+`make-searcher` parses a query string with Lucene's classic parser. These
+construct other parsers to use with `parse`:
 
 - `(query-parser field &key analyzer default-operator allow-leading-wildcard
   phrase-slop fuzzy-min-sim)` — a configured classic parser
@@ -177,19 +178,16 @@ builders make custom analyzers (also usable anywhere an `:analyzer` is):
 
 ## Status
 
-Broad. Working and covered by tests (`asdf:test-system "cl-lucene"`, 30 tests):
-indexing text, string, stored, numeric, dense-vector, facet, geo and
-sorted-string fields; query-string and `Query`-object search; the query
-builders (term, phrase, prefix, wildcard, fuzzy, regexp, numeric and term
-ranges, boolean, boost, k-NN vector, proximity/`near`, geo distance and box);
-the configurable classic, simple and multi-field query parsers; custom and
-per-field analyzers; counts, ranked hits, total-hit counts, sorting (numeric
-and string), `searchAfter` paging, scoring `explain`, faceting, highlighting,
-result grouping, nested/block-join, autocomplete suggestions, and stored-field
-retrieval; delete-by-term, delete-by-query, and update-document. Not wrapped
-yet: taxonomy/range facets, drill-sideways, function/expression scoring, custom
-`Similarity`, and near-real-time `SearcherManager` — straightforward additions
-on this foundation.
+Covered and tested (`asdf:test-system "cl-lucene"`, 30 tests): indexing of text,
+string, stored, numeric, dense-vector, facet, geo and sorted-string fields;
+query-string and `Query`-object search; the query builders listed above; the
+configurable classic, simple and multi-field parsers; custom and per-field
+analyzers; counts, ranked hits, total-hit counts, sorting, `searchAfter` paging,
+scoring `explain`, faceting, highlighting, grouping, nested/block-join,
+autocomplete, and stored-field retrieval; delete and update.
+
+Not yet wrapped: taxonomy and range facets, drill-sideways, function and
+expression scoring, custom `Similarity`, and near-real-time `SearcherManager`.
 
 ## Author
 
