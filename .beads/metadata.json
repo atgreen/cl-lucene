@@ -1,0 +1,7 @@
+{
+  "database": "dolt",
+  "backend": "dolt",
+  "dolt_mode": "embedded",
+  "dolt_database": "cl_lucene",
+  "project_id": "2f54bddd-7982-455a-867e-8c167450e64b"
+}
