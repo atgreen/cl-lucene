@@ -191,6 +191,10 @@ yet: taxonomy/range facets, drill-sideways, function/expression scoring, custom
 `Similarity`, and near-real-time `SearcherManager` — straightforward additions
 on this foundation.
 
+## Author
+
+Written by [Anthony Green](https://github.com/atgreen).
+
 ## License
 
-MIT. See the headers in each source file.
+MIT. See [LICENSE](LICENSE) and the headers in each source file.
