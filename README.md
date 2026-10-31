@@ -283,7 +283,8 @@ expression scoring, custom `Similarity`, and near-real-time `SearcherManager`.
 Known limitation: k-NN vector search returns no results from an on-disk
 (memory-mapped) index under the current OpenLDK; it works against an in-memory
 index (`open-directory :memory`). All other search works on disk. This is an
-OpenLDK vector-codec issue, not a cl-lucene one.
+OpenLDK vector-codec issue, not a cl-lucene one
+([openldk#106](https://github.com/atgreen/openldk/issues/106)).
 
 ## Author
 

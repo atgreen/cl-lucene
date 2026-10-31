@@ -186,9 +186,11 @@ previous page ended."
         (cursor (and after (if (hit-p after) (hit-score-doc after) after))))
     (cond
       ((and cursor sort)
+       ;; The 4-arg searchAfter(..., Sort) returns a plain TopDocs (only the
+       ;; 5-arg form, with the doc-scores flag, returns TopFieldDocs).
        (java-call (concatenate 'string "searchAfter(Lorg/apache/lucene/search/ScoreDoc;"
                                "Lorg/apache/lucene/search/Query;ILorg/apache/lucene/search/Sort;)"
-                               "Lorg/apache/lucene/search/TopFieldDocs;")
+                               "Lorg/apache/lucene/search/TopDocs;")
                   object cursor parsed limit (build-sort sort)))
       (cursor
        (java-call (concatenate 'string "searchAfter(Lorg/apache/lucene/search/ScoreDoc;"

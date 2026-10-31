@@ -130,6 +130,19 @@ long->Long boxing path -- counts correctly."
       (is (eql 2001 (lucene:hit-field (first hits) "year")))
       (is (eql 1984 (lucene:hit-field (car (last hits)) "year"))))))
 
+(test search-with-sort-and-after
+  "Paging with :after works together with :sort (the 4-arg searchAfter)."
+  (with-sample-index (s)
+    (let* ((page1 (lucene:search s (lucene:match-all-query) :sort '("year" :int :desc) :limit 2))
+           (page2 (lucene:search s (lucene:match-all-query) :sort '("year" :int :desc) :limit 2
+                                   :after (car (last page1)))))
+      (is (= 2 (length page1)))
+      (is (= 1 (length page2)))
+      ;; Descending by year across both pages: 2001, 1985, 1984.
+      (is (equal '(2001 1985 1984)
+                 (append (mapcar (lambda (h) (lucene:hit-field h "year")) page1)
+                         (mapcar (lambda (h) (lucene:hit-field h "year")) page2)))))))
+
 (defmacro with-mutable-index ((dir) &body body)
   "Bind DIR to a fresh in-memory directory holding two documents (ids a and b)
 for BODY, then close it.  BODY may open further writers and searchers on DIR."
