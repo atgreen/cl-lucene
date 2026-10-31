@@ -36,69 +36,92 @@ do not write Java method descriptors.
 
 ## Example
 
-A fuller walk-through: index a handful of books with several field types, then
-run a boolean query with highlighting, count by category with facets, and list
-everything newest-first.
+A tour of the library: index a few books, each with full text, an exact and
+facetable topic, a groupable section, a sortable year, and a vector embedding,
+then exercise full-text search with highlighting, proximity, semantic (vector)
+search, facets, grouping, sorted paging, and autocomplete.
 
 ```lisp
 (asdf:load-system "cl-lucene")
 
-;; Index a few books on disk.  TITLE and BODY are full text; ID is an exact
-;; key; YEAR is a sortable number; CATEGORY is both searchable (:string) and
-;; facetable (:facet).
-(lucene:with-writer (w #p"/tmp/books/" :if-exists :create)
-  (flet ((book (id title body year category)
-           (lucene:add-document
-            w (list (list "id" id :type :string)
-                    (list "title" title)
-                    (list "body" body)
-                    (list "year" year :type :int)
-                    (list "category" category :type :string)
-                    (list "category" category :type :facet)))))
-    (book "1" "On Lisp" "macros and the lisp programmable programming language" 1993 "lisp")
-    (book "2" "Practical Common Lisp" "a hands-on lisp introduction with real examples" 2005 "lisp")
-    (book "3" "Effective Java" "best practices for the java platform" 2018 "java")))
+;; One in-memory index, shared by the writer and the searcher.
+(let ((index (lucene:open-directory :memory)))
+  (lucene:with-writer (w index)
+    (flet ((book (id title body topic year vector)
+             (lucene:add-document
+              w (list (list "id" id :type :string)
+                      (list "title" title)
+                      (list "body" body)
+                      (list "topic" topic :type :string)     ; searchable + facetable
+                      (list "topic" topic :type :facet)
+                      (list "section" topic :type :sorted-string) ; groupable
+                      (list "year" year :type :int)
+                      (list "embedding" vector :type :vector :similarity :cosine)))))
+      (book "a" "Lisp Macros"           "the quick macros of a programmable language" "lisp" 1993 '(1.0 0.0 0.0))
+      (book "b" "Practical Common Lisp" "a hands-on lisp introduction with examples"   "lisp" 2005 '(0.9 0.1 0.0))
+      (book "c" "Effective Java"        "best practices for the java platform"         "java" 2018 '(0.0 1.0 0.0))
+      (book "d" "Clojure in Action"     "functional lisp on the jvm"                   "lisp" 2011 '(0.8 0.2 0.0))))
 
-(lucene:with-searcher (s #p"/tmp/books/" :default-field "body")
-  ;; A boolean query: must mention "lisp", prefer "macros", exclude category java.
-  (let ((q (lucene:boolean-query
-            :must     (lucene:term-query "body" "lisp")
-            :should   (lucene:term-query "body" "macros")
-            :must-not (lucene:term-query "category" "java"))))
-    (multiple-value-bind (hits total) (lucene:search s q :limit 10 :highlight "body")
-      (format t "~&~D hit(s):~%" total)
-      (dolist (hit hits)
-        (format t "  ~A (~A)~%    ~A~%"
-                (lucene:hit-field hit "title")
-                (lucene:hit-field hit "year")
-                (lucene:hit-snippet hit)))))
+  (flet ((titles (hits) (mapcar (lambda (h) (lucene:hit-field h "title")) hits)))
+    (lucene:with-searcher (s index :default-field "body")
+      ;; Full-text search with a highlighted snippet.
+      (multiple-value-bind (hits total) (lucene:search s "macros" :highlight "body")
+        (format t "~&search \"macros\" (~D hit):~%" total)
+        (dolist (h hits) (format t "  ~A -- ~A~%" (lucene:hit-field h "title") (lucene:hit-snippet h))))
 
-  ;; Count books per category.
-  (format t "~&by category: ~S~%"
-          (cdr (assoc "category"
-                      (lucene:facets s (lucene:match-all-query) '("category"))
-                      :test #'string=)))
+      ;; Proximity: "quick" within two words of "macros".
+      (format t "~&near quick..macros: ~S~%"
+              (titles (lucene:search s (lucene:near-query "body" '("quick" "macros") :max-gaps 2))))
 
-  ;; List everything, newest first.
-  (format t "~&newest first:~%")
-  (dolist (hit (lucene:search s (lucene:match-all-query) :sort '("year" :int :desc)))
-    (format t "  ~A  ~A~%" (lucene:hit-field hit "year") (lucene:hit-field hit "title"))))
+      ;; Semantic search: nearest embeddings to a query vector.
+      (format t "~&nearest to (1 0 0): ~S~%"
+              (titles (lucene:search s (lucene:knn-query "embedding" '(1.0 0.0 0.0) :k 2))))
+
+      ;; Facet counts over the whole collection.
+      (format t "~&by topic: ~S~%"
+              (cdr (assoc "topic" (lucene:facets s (lucene:match-all-query) '("topic")) :test #'string=)))
+
+      ;; Group results by section.
+      (format t "~&grouped by section:~%")
+      (dolist (g (lucene:group-search s (lucene:match-all-query) "section" :hits-per-group 10))
+        (format t "  ~A (~D): ~S~%" (lucene:group-value g) (lucene:group-total g) (titles (lucene:group-hits g))))
+
+      ;; Sort by year, newest first, a page at a time with :after.
+      (let* ((p1 (lucene:search s (lucene:match-all-query) :sort '("year" :int :desc) :limit 2))
+             (p2 (lucene:search s (lucene:match-all-query) :sort '("year" :int :desc) :limit 2
+                                  :after (car (last p1)))))
+        (format t "~&by year -- page 1: ~S  page 2: ~S~%" (titles p1) (titles p2)))))
+
+  (lucene:close index))
+
+;; Autocomplete, built separately from the index.
+(let ((suggester (lucene:make-suggester)))
+  (dolist (title '("Lisp Macros" "Practical Common Lisp" "Clojure in Action" "Effective Java"))
+    (lucene:suggest-add suggester title :weight (length title)))
+  (lucene:suggest-commit suggester)
+  (format t "~&complete \"li\": ~S~%" (mapcar #'car (lucene:suggest suggester "li")))
+  (lucene:close suggester))
 ```
 
 Output:
 
 ```
-2 hit(s):
-  On Lisp (1993)
-    <b>macros</b> and the <b>lisp</b> programmable programming language
-  Practical Common Lisp (2005)
-    a hands-on <b>lisp</b> introduction with real examples
-by category: (("lisp" . 2) ("java" . 1))
-newest first:
-  2018  Effective Java
-  2005  Practical Common Lisp
-  1993  On Lisp
+search "macros" (1 hit):
+  Lisp Macros -- the quick <b>macros</b> of a programmable language
+near quick..macros: ("Lisp Macros")
+nearest to (1 0 0): ("Lisp Macros" "Practical Common Lisp")
+by topic: (("lisp" . 3) ("java" . 1))
+grouped by section:
+  lisp (3): ("Lisp Macros" "Practical Common Lisp" "Clojure in Action")
+  java (1): ("Effective Java")
+by year -- page 1: ("Effective Java" "Clojure in Action")  page 2: ("Practical Common Lisp" "Lisp Macros")
+complete "li": ("Practical Common Lisp" "Lisp Macros")
 ```
+
+This example uses an in-memory index. A pathname opens a memory-mapped on-disk
+index instead, and everything here works the same way on disk — except k-NN
+vector search, which currently returns no results from a memory-mapped index
+under OpenLDK (see Status); use `:memory` for vector search for now.
 
 ## Requirements
 
@@ -256,6 +279,11 @@ autocomplete, and stored-field retrieval; delete and update.
 
 Not yet wrapped: taxonomy and range facets, drill-sideways, function and
 expression scoring, custom `Similarity`, and near-real-time `SearcherManager`.
+
+Known limitation: k-NN vector search returns no results from an on-disk
+(memory-mapped) index under the current OpenLDK; it works against an in-memory
+index (`open-directory :memory`). All other search works on disk. This is an
+OpenLDK vector-codec issue, not a cl-lucene one.
 
 ## Author
 
