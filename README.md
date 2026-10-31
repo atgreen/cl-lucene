@@ -197,4 +197,16 @@ Written by [Anthony Green](https://github.com/atgreen).
 
 ## License
 
-MIT. See [LICENSE](LICENSE) and the headers in each source file.
+cl-lucene itself is MIT; see [LICENSE](LICENSE) and the headers in each source
+file.
+
+It builds on, and at runtime loads, two projects under their own licenses:
+
+- **OpenLDK** — GNU GPL, version 3 or later, with the Classpath exception. The
+  Classpath exception is what lets an independent module like this one be
+  distributed under its own terms while linking against OpenLDK.
+- **Apache Lucene** — Apache License, Version 2.0. Its jars are downloaded from
+  Maven Central at runtime; they are not distributed as part of cl-lucene.
+
+Using cl-lucene brings these dependencies into your program, so your combined
+work must comply with all three licenses.
