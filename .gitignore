@@ -1,7 +1,12 @@
+*.fasl
+*.abcl
+/index/
+/scratch/
 
-# Beads / Dolt files (added by bd init)
-.dolt/
-*.db
-.beads-credential-key
-.beads/proxieddb/
-*.gate.lock*
+# ocicl-vendored systems and lockfile: cl-lucene loads OpenLDK from a local
+# checkout (see README), not from ocicl, so this tree is local-only.
+/ocicl/
+/ocicl.csv
+
+# beads runtime lock beside the dolt-backed .beads store
+.beads.gate.lock
