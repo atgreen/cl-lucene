@@ -3,10 +3,12 @@
 A native Common Lisp API for [Apache Lucene](https://lucene.apache.org/),
 running on [OpenLDK](https://github.com/atgreen/openldk).
 
-Lucene is a Java library. OpenLDK runs it inside SBCL, so Lisp and Lucene share
-a single process and heap. cl-lucene wraps the Lucene classes in Lisp functions
-that take and return ordinary Lisp data, so callers do not write Java method
-descriptors.
+Lucene is a Java library. OpenLDK runs it inside SBCL by transpiling Lucene's
+Java bytecode into Common Lisp, which SBCL then compiles to native machine code,
+and mapping Lucene's Java classes onto CLOS classes. Lucene runs natively on
+SBCL, in the same process and heap as your Lisp code. cl-lucene wraps those
+classes in Lisp functions that take and return ordinary Lisp data, so callers
+do not write Java method descriptors.
 
 ```lisp
 (asdf:load-system "cl-lucene")
