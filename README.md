@@ -118,10 +118,8 @@ by year -- page 1: ("Effective Java" "Clojure in Action")  page 2: ("Practical C
 complete "li": ("Practical Common Lisp" "Lisp Macros")
 ```
 
-This example uses an in-memory index. A pathname opens a memory-mapped on-disk
-index instead, and everything here works the same way on disk — except k-NN
-vector search, which currently returns no results from a memory-mapped index
-under OpenLDK (see Status); use `:memory` for vector search for now.
+This example uses an in-memory index; a pathname opens a memory-mapped on-disk
+index instead, and everything here works the same way on disk.
 
 ## Requirements
 
@@ -279,12 +277,6 @@ autocomplete, and stored-field retrieval; delete and update.
 
 Not yet wrapped: taxonomy and range facets, drill-sideways, function and
 expression scoring, custom `Similarity`, and near-real-time `SearcherManager`.
-
-Known limitation: k-NN vector search returns no results from an on-disk
-(memory-mapped) index under the current OpenLDK; it works against an in-memory
-index (`open-directory :memory`). All other search works on disk. This is an
-OpenLDK vector-codec issue, not a cl-lucene one
-([openldk#106](https://github.com/atgreen/openldk/issues/106)).
 
 ## Author
 
