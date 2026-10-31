@@ -9,7 +9,7 @@ serialization. `cl-lucene` wraps it in an idiomatic Lisp API: you build an
 index and search it with Lisp data, and never see a Java method descriptor.
 
 ```lisp
-(ql:quickload :cl-lucene)   ; or (asdf:load-system "cl-lucene")
+(asdf:load-system "cl-lucene")
 
 ;; Build an on-disk index.
 (lucene:with-writer (w #p"/tmp/books/" :if-exists :create)
