@@ -34,6 +34,72 @@ do not write Java method descriptors.
             (lucene:hit-score hit))))
 ```
 
+## Example
+
+A fuller walk-through: index a handful of books with several field types, then
+run a boolean query with highlighting, count by category with facets, and list
+everything newest-first.
+
+```lisp
+(asdf:load-system "cl-lucene")
+
+;; Index a few books on disk.  TITLE and BODY are full text; ID is an exact
+;; key; YEAR is a sortable number; CATEGORY is both searchable (:string) and
+;; facetable (:facet).
+(lucene:with-writer (w #p"/tmp/books/" :if-exists :create)
+  (flet ((book (id title body year category)
+           (lucene:add-document
+            w (list (list "id" id :type :string)
+                    (list "title" title)
+                    (list "body" body)
+                    (list "year" year :type :int)
+                    (list "category" category :type :string)
+                    (list "category" category :type :facet)))))
+    (book "1" "On Lisp" "macros and the lisp programmable programming language" 1993 "lisp")
+    (book "2" "Practical Common Lisp" "a hands-on lisp introduction with real examples" 2005 "lisp")
+    (book "3" "Effective Java" "best practices for the java platform" 2018 "java")))
+
+(lucene:with-searcher (s #p"/tmp/books/" :default-field "body")
+  ;; A boolean query: must mention "lisp", prefer "macros", exclude category java.
+  (let ((q (lucene:boolean-query
+            :must     (lucene:term-query "body" "lisp")
+            :should   (lucene:term-query "body" "macros")
+            :must-not (lucene:term-query "category" "java"))))
+    (multiple-value-bind (hits total) (lucene:search s q :limit 10 :highlight "body")
+      (format t "~&~D hit(s):~%" total)
+      (dolist (hit hits)
+        (format t "  ~A (~A)~%    ~A~%"
+                (lucene:hit-field hit "title")
+                (lucene:hit-field hit "year")
+                (lucene:hit-snippet hit)))))
+
+  ;; Count books per category.
+  (format t "~&by category: ~S~%"
+          (cdr (assoc "category"
+                      (lucene:facets s (lucene:match-all-query) '("category"))
+                      :test #'string=)))
+
+  ;; List everything, newest first.
+  (format t "~&newest first:~%")
+  (dolist (hit (lucene:search s (lucene:match-all-query) :sort '("year" :int :desc)))
+    (format t "  ~A  ~A~%" (lucene:hit-field hit "year") (lucene:hit-field hit "title"))))
+```
+
+Output:
+
+```
+2 hit(s):
+  On Lisp (1993)
+    <b>macros</b> and the <b>lisp</b> programmable programming language
+  Practical Common Lisp (2005)
+    a hands-on <b>lisp</b> introduction with real examples
+by category: (("lisp" . 2) ("java" . 1))
+newest first:
+  2018  Effective Java
+  2005  Practical Common Lisp
+  1993  On Lisp
+```
+
 ## Requirements
 
 - SBCL on Linux
