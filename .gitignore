@@ -10,3 +10,6 @@
 
 # beads runtime lock beside the dolt-backed .beads store
 .beads.gate.lock
+
+# locally generated SBOM (produced in CI, attached to the release)
+/cl-lucene-sbom.cdx.json

@@ -7,7 +7,7 @@
   :description "A native Common Lisp API for Apache Lucene, running on OpenLDK."
   :author "Anthony Green <green@moxielogic.com>"
   :license "MIT"
-  :version "0.1.0"
+  :version "1.0.0"
   :depends-on ("openldk/interop")
   :serial t
   :components ((:file "package")
